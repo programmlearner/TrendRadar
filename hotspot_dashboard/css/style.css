@@ -120,9 +120,11 @@ body::before {
 }
 
 .layout {
-    display: grid;
-    grid-template-columns: 1.3fr 0.9fr;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
+    width: min(960px, 100%);
+    margin: 0 auto;
 }
 
 .panel {
@@ -477,12 +479,14 @@ body[data-chat-open="true"] {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    align-items: center;
 }
 
 .batch-card {
+    width: min(900px, 100%);
     border: 1px solid var(--border);
     border-radius: 22px;
-    padding: 22px;
+    padding: 28px;
     background: white;
     display: flex;
     flex-direction: column;

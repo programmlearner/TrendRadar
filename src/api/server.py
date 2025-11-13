@@ -18,18 +18,20 @@ from src.api.storage.json_store import JSONConversationStore
 from src.api.services.context_builder import ContextBuilder
 from src.api.services.llm_service import create_llm_service_from_config
 from src.api.services.chat_service import ChatService
-from src.api.routes import chat, system, dashboard
+from src.api.scheduler import CrawlerScheduler
+from src.api.routes import chat, system, dashboard, scheduler
 
 
 # 全局实例
 config_manager: ConfigManager = None
 chat_service: ChatService = None
+crawler_scheduler: CrawlerScheduler = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    global config_manager, chat_service
+    global config_manager, chat_service, crawler_scheduler
 
     # 启动时初始化
     print("=" * 60)
@@ -71,6 +73,17 @@ async def lifespan(app: FastAPI):
         system.set_dependencies(config_manager, context_builder, store, llm_service)
 
         print("✓ 所有服务初始化完成")
+
+        # 3. 初始化并启动定时任务调度器
+        crawler_scheduler = CrawlerScheduler(
+            config=config_manager.config,
+            config_path="config/config.yaml"
+        )
+        await crawler_scheduler.start()
+
+        # 设置调度器依赖注入
+        scheduler.set_scheduler(crawler_scheduler)
+
         print("=" * 60)
         print(f"📚 API 文档地址: http://localhost:8000/docs")
         print(f"🔍 ReDoc 文档: http://localhost:8000/redoc")
@@ -85,7 +98,10 @@ async def lifespan(app: FastAPI):
     yield
 
     # 关闭时清理
-    print("\nTrendRadar API 服务器关闭")
+    print("\nTrendRadar API 服务器关闭中...")
+    if crawler_scheduler:
+        await crawler_scheduler.stop()
+    print("TrendRadar API 服务器已关闭")
 
 
 # 创建 FastAPI 应用
@@ -111,6 +127,7 @@ app.add_middleware(
 app.include_router(system.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(scheduler.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["健康检查"])

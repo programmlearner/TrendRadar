@@ -254,7 +254,7 @@ const query = new URLSearchParams(window.location.search);
 
     const heroEls = {
         date: document.getElementById('metaDate'),
-        batches: document.getElementById('metaBatch'),
+        keywords: document.getElementById('metaKeywords') || document.getElementById('metaBatch'),
         news: document.getElementById('metaNews'),
         updated: document.getElementById('metaUpdated'),
     };
@@ -301,6 +301,18 @@ const query = new URLSearchParams(window.location.search);
             hour: '2-digit',
             minute: '2-digit',
         });
+    };
+
+    const countKeywordGroups = (batches = []) => {
+        const groupSet = new Set();
+        batches.forEach((batch) => {
+            (batch.stats || []).forEach((stat) => {
+                if (stat?.word_group) {
+                    groupSet.add(stat.word_group);
+                }
+            });
+        });
+        return groupSet.size;
     };
 
     const createStatCard = (stat) => {
@@ -387,11 +399,16 @@ const query = new URLSearchParams(window.location.search);
     const renderSummary = (data, options = {}) => {
         const { badgeText } = options;
         heroEls.date.textContent = data.metadata?.date || '—';
-        heroEls.batches.textContent = `${data.metadata?.total_batches ?? 0} 批`;
+        if (heroEls.keywords) {
+            const keywordGroupCount = countKeywordGroups(data.batches || []);
+            heroEls.keywords.textContent = `${keywordGroupCount} 组`;
+        }
         heroEls.news.textContent = `${formatNumber(data.metadata?.total_news_count ?? 0)} 条`;
         heroEls.updated.textContent = formatDate(data.metadata?.last_update);
 
-        batchBadgeEl.textContent = badgeText ?? `${data.batches?.length ?? 0} 批记录`;
+        // if (batchBadgeEl) {
+        //     batchBadgeEl.textContent = badgeText ?? `${data.batches?.length ?? 0} 批记录`;
+        // }
 
         batchTimelineEl.innerHTML = '';
         if (!data.batches?.length) {
@@ -404,37 +421,7 @@ const query = new URLSearchParams(window.location.search);
         });
     };
 
-    const renderIncremental = (data, options = {}) => {
-        const { badgeText } = options;
-        incrementalBadgeEl.textContent = badgeText ?? (data.metadata?.batch_id || '—');
-
-        incrementalMetaEl.innerHTML = '';
-        const metaEntries = [
-            { label: '批次时间', value: formatDate(data.metadata?.timestamp) },
-            { label: '新增新闻', value: `${data.metadata?.new_news_count ?? 0} 条` },
-            { label: '覆盖词组', value: `${data.stats?.length ?? 0} 组` },
-        ];
-
-        metaEntries.forEach((item) => {
-            const card = document.createElement('div');
-            card.className = 'incremental-card';
-            card.innerHTML = `
-                <div class="meta-label">${item.label}</div>
-                <strong>${item.value}</strong>
-            `;
-            incrementalMetaEl.appendChild(card);
-        });
-
-        incrementalStatsEl.innerHTML = '';
-        if (!data.stats?.length) {
-            incrementalStatsEl.innerHTML = '<div class="empty-state">暂无新增数据</div>';
-            return;
-        }
-
-        data.stats.forEach((stat) => {
-            incrementalStatsEl.appendChild(createStatCard(stat));
-        });
-    };
+    const renderIncremental = () => {};
 
     renderSummary(SAMPLE_SUMMARY, { badgeText: '样例视图' });
     renderIncremental(SAMPLE_INCREMENTAL, { badgeText: '样例批次' });
@@ -471,22 +458,7 @@ const query = new URLSearchParams(window.location.search);
             }
         }
 
-        const inlineIncremental = readInlineJSON('inline-incremental');
-        if (inlineIncremental) {
-            renderIncremental(inlineIncremental);
-            dataState.incrementalSource = 'inline';
-        } else {
-            const incrementalResult = await fetchWithFallback({
-                label: 'incremental API',
-                loader: (date) => fetchDashboardJSON('/dashboard/incremental', { date }),
-            });
-            if (incrementalResult) {
-                renderIncremental(incrementalResult.json);
-                dataState.incrementalSource = 'api';
-            } else if (dataState.incrementalSource === 'sample') {
-                incrementalBadgeEl.textContent = '样例批次 · 等待 API 数据';
-            }
-        }
+        // 增量监控已隐藏，不再请求数据
     };
 
     const bootstrapChatConsole = () => {

@@ -95,10 +95,8 @@ class TrendRadarApp:
 
             # 3. 读取历史数据（用于统计）
             print("\n[2/6] 读取历史数据...")
-            platform_ids = [source.source_id for source in sources]
-            all_results, id_to_name, title_info = self.news_ranking.read_all_today_titles(
-                current_platform_ids=platform_ids
-            )
+            # 读取所有历史数据，不进行平台过滤
+            all_results, id_to_name, title_info = self.news_ranking.read_all_today_titles()
 
             # 如果历史数据为空（首次运行），使用刚爬取的数据
             if not all_results:
@@ -112,8 +110,7 @@ class TrendRadarApp:
             # 4. 检测新增新闻
             print("\n[3/6] 检测新增新闻...")
             new_titles = self.news_ranking.detect_latest_new_titles(
-                current_results=all_results,
-                current_platform_ids=platform_ids
+                current_results=all_results
             )
             new_count = sum(len(titles) for titles in new_titles.values())
             print(f"✓ 检测到 {new_count} 条新增新闻")
@@ -134,16 +131,27 @@ class TrendRadarApp:
             report_type = self._get_report_type(mode)
             is_daily_summary = True  # 总是生成当日汇总
 
-            # 生成文本报告
-            txt_path = self.news_reporter.generate_text_report(
+            # 生成时间戳文本报告（用于历史追踪）
+            timestamp_txt_path = self.news_reporter.generate_text_report(
                 stats=stats,
                 total_titles=total_titles,
                 failed_ids=failed_ids,
                 new_news_list=self._convert_new_titles_to_news(new_titles, id_to_name),
                 mode=mode,
-                is_daily_summary=is_daily_summary
+                is_daily_summary=False  # 时间戳文件
             )
-            print(f"✓ 文本报告: {txt_path}")
+            print(f"✓ 时间戳报告: {timestamp_txt_path}")
+
+            # 生成当日汇总文本报告（追加合并模式）
+            summary_txt_path = self.news_reporter.generate_text_report(
+                stats=stats,
+                total_titles=total_titles,
+                failed_ids=failed_ids,
+                new_news_list=self._convert_new_titles_to_news(new_titles, id_to_name),
+                mode=mode,
+                is_daily_summary=is_daily_summary  # 汇总文件
+            )
+            print(f"✓ 汇总报告: {summary_txt_path}")
 
             # 生成 JSON 报告(汇总+增量)
             json_result = self.news_reporter.generate_json_report(
@@ -161,11 +169,53 @@ class TrendRadarApp:
             else:
                 print("ℹ️  本批次无增量新闻，跳过 JSON 生成")
 
-            # TODO: 生成HTML报告(可选)
-            html_path = None
+            # 生成邮件专用的 HTML 报告（服务器端渲染）
+            html_path = self.news_reporter.generate_html_report(
+                stats=stats,
+                total_titles=total_titles,
+                failed_ids=failed_ids,
+                new_news_list=self._convert_new_titles_to_news(new_titles, id_to_name),
+                mode=mode,
+                is_daily_summary=is_daily_summary
+            )
+            print(f"✓ HTML 报告: {html_path}")
 
             # 7. 发送通知
             print("\n[6/6] 发送通知...")
+
+            # 三重检查：开关 + 配置 + 内容
+            enable_notification = self.config.get("ENABLE_NOTIFICATION", True)
+            has_notification = self._has_notification_configured()
+            has_valid_content = self._has_valid_content(stats, new_titles, mode)
+
+            # 检查1: 通知功能开关
+            if not enable_notification:
+                print("跳过通知：通知功能已禁用 (config.yaml 中 enable_notification=false)")
+                print("\n" + "=" * 60)
+                print("运行完成!")
+                print("=" * 60)
+                return True
+
+            # 检查2: 是否配置通知渠道
+            if not has_notification:
+                print("⚠️  警告：通知功能已启用但未配置任何通知渠道，将跳过通知发送")
+                print("提示：请在 config.yaml 或环境变量中配置至少一个通知渠道")
+                print("\n" + "=" * 60)
+                print("运行完成!")
+                print("=" * 60)
+                return True
+
+            # 检查3: 是否有有效内容
+            if not has_valid_content:
+                print(f"跳过通知：{report_type} - 未检测到有效的新闻内容")
+                if mode == "incremental":
+                    print("提示：增量模式下，只有检测到新增的匹配新闻时才会发送通知")
+                print("\n" + "=" * 60)
+                print("运行完成!")
+                print("=" * 60)
+                return True
+
+            # 准备报告数据
             report_data = self.news_reporter.prepare_report_data(
                 stats=stats,
                 failed_ids=failed_ids,
@@ -173,6 +223,7 @@ class TrendRadarApp:
                 mode=mode
             )
 
+            # 发送通知
             self.notification_manager.send_notifications(
                 report_data=report_data,
                 report_type=report_type,
@@ -344,6 +395,40 @@ class TrendRadarApp:
             "incremental": "增量监控"
         }
         return mode_map.get(mode, "当日汇总")
+
+    def _has_notification_configured(self) -> bool:
+        """检查是否配置了任何通知渠道
+
+        Returns:
+            bool: 是否有配置的通知渠道
+        """
+        enabled_notifiers = [
+            notifier for notifier in self.notification_manager.notifiers.values()
+            if notifier.is_configured()
+        ]
+        return len(enabled_notifiers) > 0
+
+    def _has_valid_content(self, stats, new_titles: Dict, mode: str) -> bool:
+        """检查是否有有效的新闻内容
+
+        Args:
+            stats: 统计数据
+            new_titles: 新增标题字典
+            mode: 模式
+
+        Returns:
+            bool: 是否有有效内容
+        """
+        if mode in ["incremental", "current"]:
+            # 增量/当前榜单模式：只要stats有内容就说明有匹配的新闻
+            return any(stat.count > 0 for stat in stats)
+        else:
+            # 当日汇总模式：检查是否有匹配的频率词新闻或新增新闻
+            has_matched_news = any(stat.count > 0 for stat in stats)
+            has_new_news = bool(
+                new_titles and any(len(titles) > 0 for titles in new_titles.values())
+            )
+            return has_matched_news or has_new_news
 
     def list_sources(self) -> None:
         """列出所有可用的信息源"""

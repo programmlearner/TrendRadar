@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${page_title}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f5f5f7;">
+    <center style="width:100%; background-color:#f5f5f7;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f7;">
+            <tr>
+                <td align="center" style="padding:32px 12px 48px 12px;">
+                    <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px; max-width:640px; background-color:#ffffff; border-radius:36px; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#111111;">
+                        <tr>
+                            <td style="padding:40px 36px 28px 36px; background:linear-gradient(120deg,#0f6bff,#1c1c1f); color:#ffffff;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="font-size:13px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.85;">${mode_label}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-top:16px; font-size:30px; font-weight:600; letter-spacing:-0.3px;">TrendRadar · 今日热点雷达</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-top:12px; font-size:16px; line-height:1.6; opacity:0.9;">${hero_tagline}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-top:24px;">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="width:50%; padding:0 12px 12px 0;">
+                                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:18px; background-color:rgba(255,255,255,0.14);">
+                                                            <tr>
+                                                                <td style="padding:14px 16px;">
+                                                                    <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.7;">数据日期</div>
+                                                                    <div style="font-size:20px; font-weight:600;">${meta_date}</div>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                    <td style="width:50%; padding:0 0 12px 12px;">
+                                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:18px; background-color:rgba(255,255,255,0.14);">
+                                                            <tr>
+                                                                <td style="padding:14px 16px;">
+                                                                    <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.7;">关键词组</div>
+                                                                    <div style="font-size:20px; font-weight:600;">${meta_keywords}</div>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="width:50%; padding:0 12px 0 0;">
+                                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:18px; background-color:rgba(255,255,255,0.14);">
+                                                            <tr>
+                                                                <td style="padding:14px 16px;">
+                                                                    <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.7;">覆盖新闻</div>
+                                                                    <div style="font-size:20px; font-weight:600;">${meta_news}</div>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                    <td style="width:50%; padding:0 0 0 12px;">
+                                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-radius:18px; background-color:rgba(255,255,255,0.14);">
+                                                            <tr>
+                                                                <td style="padding:14px 16px;">
+                                                                    <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; opacity:0.7;">最新更新</div>
+                                                                    <div style="font-size:20px; font-weight:600;">${meta_updated}</div>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:32px 36px 16px 36px;">
+                                <div style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#6e6e73; margin-bottom:8px;">${mode_description}</div>
+                                <div style="font-size:22px; font-weight:600; color:#111111;">今日汇总</div>
+                            </td>
+                        </tr>
+                        ${news_sections}
+                        ${new_section}
+                        ${failed_section}
+                        <tr>
+                            <td style="padding:32px 36px 48px 36px; font-size:12px; color:#6e6e73; text-align:center;">
+                                Generated by TrendRadar
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </center>
+</body>
+</html>

@@ -60,9 +60,9 @@ notification:
     wework_url: "" # 企业微信机器人的 webhook URL
     telegram_bot_token: "" # Telegram Bot Token
     telegram_chat_id: "" # Telegram Chat ID
-    email_from: "" # 发件人邮箱地址
-    email_password: "" # 发件人邮箱密码或授权码
-    email_to: "" # 收件人邮箱地址，多个收件人用逗号分隔
+    email_from: "wufuliang561@163.com" # 发件人邮箱地址
+    email_password: "QQfAF5amSJ4QJbDF" # 发件人邮箱密码或授权码
+    email_to: "wufuliang561@gmail.com" # 收件人邮箱地址，多个收件人用逗号分隔
     email_smtp_server: "smtp.163.com" # SMTP服务器地址（可选，留空自动识别）
     email_smtp_port: "" # SMTP端口（可选，留空自动识别）
     ntfy_server_url: "https://ntfy.sh" # ntfy服务器地址，默认使用公共服务，可改为自托管地址
@@ -99,32 +99,68 @@ chat:
   max_history_length: 20  # 单个会话保留的最大历史消息数（控制 Token 使用）
   context_news_limit: 50  # 首轮对话注入的最大新闻数量
 
+# ⏰ 定时任务调度器配置（API 服务器内置定时爬取）
+# 🔸 说明：
+#   启用后,API 服务器会自动按照配置的时间间隔或 Cron 表达式执行爬取任务
+#   无需手动创建 cron 任务或 GitHub Actions 定时任务
+# 🔸 适用场景：
+#   - 本地或服务器部署时,希望 API 服务自动定时爬取
+#   - 需要灵活控制爬取频率和时间
+scheduler:
+  enabled: true  # 是否启用定时任务调度器（默认关闭）
+  trigger_type: "interval"  # 触发器类型: "interval"(间隔) 或 "cron"(定时)
+  mode: "daily"  # 爬取模式: "daily"(当日汇总) / "current"(当前榜单) / "incremental"(增量监控)
+
+  # 间隔触发配置（trigger_type: "interval" 时生效）
+  interval_seconds: 3600  # 执行间隔（秒），默认 3600 秒 = 1 小时
+
+  # Cron 触发配置（trigger_type: "cron" 时生效）
+  # Cron 表达式格式: "分 时 日 月 周"
+  # 示例:
+  #   "0 * * * *"   - 每小时整点执行
+  #   "0 */2 * * *" - 每 2 小时执行
+  #   "0 9,12,18,21 * * *" - 每天 9:00、12:00、18:00、21:00 执行
+  #   "*/30 * * * *" - 每 30 分钟执行
+  cron_expression: "0 * * * *"  # 默认每小时执行一次
+
+  # 💡 使用建议:
+  #   1. 本地开发: 使用 interval 模式,设置较长间隔（如 3600 秒）
+  #   2. 生产环境: 使用 cron 模式,在特定时间执行（如每小时整点）
+  #   3. 配合 push_window 使用,可实现更精细的推送控制
+
+  # 📝 API 控制端点:
+  #   - GET  /api/v1/scheduler/status   - 查看调度器状态
+  #   - GET  /api/v1/scheduler/history  - 查看执行历史
+  #   - POST /api/v1/scheduler/pause    - 暂停任务
+  #   - POST /api/v1/scheduler/resume   - 恢复任务
+  #   - POST /api/v1/scheduler/trigger  - 立即手动触发
+
 # name 可以定义任意名称，只具有显示作用，即使项目运行了几天后，忽然改掉 name 也不会影响代码的正常运行
 platforms:
   - id: "toutiao"
     name: "今日头条"
-  - id: "baidu"
-    name: "百度热搜"
-  - id: "wallstreetcn-hot"
-    name: "华尔街见闻"
-  - id: "thepaper"
-    name: "澎湃新闻"
-  - id: "bilibili-hot-search"
-    name: "bilibili 热搜"
-  - id: "cls-hot"
-    name: "财联社热门"
-  - id: "ifeng"
-    name: "凤凰网"
-  - id: "tieba"
-    name: "贴吧"
-  - id: "weibo"
-    name: "微博"
-  - id: "douyin"
-    name: "抖音"
-  - id: "zhihu"
-    name: "知乎"
-  - id: "jin10"
-    name: "金十数据"
+  # - id: "baidu"
+  #   name: "百度热搜"
+  # - id: "wallstreetcn-hot"
+  #   name: "华尔街见闻"
+  # - id: "thepaper"
+  #   name: "澎湃新闻"
+  # - id: "bilibili-hot-search"
+  #   name: "bilibili 热搜"
+  # - id: "cls-hot"
+  #   name: "财联社热门"
+  # - id: "ifeng"
+  #   name: "凤凰网"
+  # - id: "tieba"
+  #   name: "贴吧"
+  # - id: "weibo"
+  #   name: "微博"
+  # - id: "douyin"
+  #   name: "抖音"
+  # - id: "zhihu"
+  #   name: "知乎"
+  # - id: "jin10"
+  #   name: "金十数据"
 
 # 信息源配置
 # 🔸 enabled: 启用的信息源列表
@@ -179,4 +215,4 @@ sources:
     api_key: ""  # 建议通过环境变量 YOUTUBE_API_KEY 配置
     regions:
       - "US"  # 美国
-    max_results: 50
+    max_results: 20

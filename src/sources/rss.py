@@ -2,11 +2,18 @@
 """RSS 订阅源"""
 
 import feedparser
+import ssl
 from datetime import datetime
 from typing import List, Dict, Any
 from src.sources.base import BaseSource
 from src.models.news import News
 from src.utils.file import clean_title
+
+# 处理 macOS SSL 证书问题
+# 在某些 macOS 系统上,Python 的 SSL 证书配置可能不完整
+# 这会导致 feedparser 无法访问 HTTPS RSS 源
+if hasattr(ssl, '_create_unverified_context'):
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class RSSSource(BaseSource):

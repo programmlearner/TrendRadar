@@ -179,7 +179,12 @@ class NewsRanking:
         final_id_to_name = {}
         title_info = {}
 
-        files = sorted([f for f in txt_dir.iterdir() if f.suffix == ".txt"])
+        # 排除汇总文件，只读取时间戳文件
+        files = sorted([
+            f for f in txt_dir.iterdir()
+            if f.suffix == ".txt"
+            and f.name not in ["当日汇总.txt", "当前榜单汇总.txt", "当日增量.txt"]
+        ])
 
         for file_path in files:
             time_info = file_path.stem  # 文件名作为时间标识
