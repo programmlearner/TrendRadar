@@ -673,9 +673,8 @@ const query = new URLSearchParams(window.location.search);
                     stopButton.focus();
                 }
             });
-            summonChatSession().catch((error) => {
-                console.warn('打开聊天时创建会话失败', error);
-                setStatus('等待服务启动…', 'error');
+            checkChatServiceStatus().catch((error) => {
+                console.warn('聊天服务自检失败', error);
             });
         };
 
@@ -875,9 +874,8 @@ const query = new URLSearchParams(window.location.search);
             }
         });
 
-        summonChatSession().catch((error) => {
-            console.warn('初始会话创建失败', error);
-            setStatus('等待服务启动…', 'error');
+        checkChatServiceStatus().catch((error) => {
+            console.warn('聊天服务状态检查失败', error);
         });
     };
 
