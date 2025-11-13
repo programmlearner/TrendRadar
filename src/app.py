@@ -112,6 +112,7 @@ class TrendRadarApp:
             # 4. 检测新增新闻
             print("\n[3/6] 检测新增新闻...")
             new_titles = self.news_ranking.detect_latest_new_titles(
+                current_results=all_results,
                 current_platform_ids=platform_ids
             )
             new_count = sum(len(titles) for titles in new_titles.values())
@@ -145,7 +146,7 @@ class TrendRadarApp:
             print(f"✓ 文本报告: {txt_path}")
 
             # 生成 JSON 报告(汇总+增量)
-            summary_path, incremental_path = self.news_reporter.generate_json_report(
+            json_result = self.news_reporter.generate_json_report(
                 stats=stats,
                 total_titles=total_titles,
                 failed_ids=failed_ids,
@@ -153,8 +154,12 @@ class TrendRadarApp:
                 mode=mode,
                 is_daily_summary=is_daily_summary
             )
-            print(f"✓ JSON 汇总: {summary_path}")
-            print(f"✓ JSON 增量: {incremental_path}")
+            if json_result:
+                summary_path, incremental_path = json_result
+                print(f"✓ JSON 汇总: {summary_path}")
+                print(f"✓ JSON 增量: {incremental_path}")
+            else:
+                print("ℹ️  本批次无增量新闻，跳过 JSON 生成")
 
             # TODO: 生成HTML报告(可选)
             html_path = None
@@ -250,14 +255,14 @@ class TrendRadarApp:
         id_to_name = {}
         title_info = {}
 
-        # 构建id_to_name映射
-        for source in sources:
-            id_to_name[source.source_id] = source.source_name
-
-        # 转换新闻数据
+        # 转换新闻数据并构建id_to_name映射
         time_info = format_time_filename()
         for news in all_news:
             platform_id = news.platform
+
+            # 构建 platform_id 到 platform_name 的映射
+            if platform_id not in id_to_name:
+                id_to_name[platform_id] = news.platform_name
 
             if platform_id not in results:
                 results[platform_id] = {}

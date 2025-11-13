@@ -67,6 +67,7 @@ class NewsReporter:
                 for news in news_list:
                     processed_title = {
                         "title": news.title,
+                        "platform": news.platform,  # 平台ID
                         "source_name": news.platform_name,
                         "time_display": "",
                         "count": 1,
@@ -97,6 +98,7 @@ class NewsReporter:
                 extra = news.extra
                 processed_title = {
                     "title": news.title,
+                    "platform": news.platform,  # 平台ID
                     "source_name": news.platform_name,
                     "time_display": extra.get("time_display", ""),
                     "count": extra.get("count", 1),
@@ -425,6 +427,7 @@ class NewsReporter:
         Returns:
             Path: 生成的文件路径
         """
+        # 使用固定文件名,便于读取和增量对比
         if is_daily_summary:
             if mode == "current":
                 filename = "当前榜单汇总.txt"
@@ -510,7 +513,7 @@ class NewsReporter:
         new_news_list: Optional[List[News]] = None,
         mode: str = "daily",
         is_daily_summary: bool = False
-    ) -> Tuple[Path, Path]:
+    ) -> Optional[Tuple[Path, Path]]:
         """生成 JSON 报告(汇总+增量)
 
         Args:
@@ -522,7 +525,7 @@ class NewsReporter:
             is_daily_summary: 是否为当日汇总
 
         Returns:
-            Tuple[Path, Path]: (汇总文件路径, 增量文件路径)
+            Tuple[Path, Path] | None: (汇总文件路径, 增量文件路径), 无增量时返回None
         """
         # 准备报告数据
         report_data = self.prepare_report_data(stats, failed_ids, new_news_list, mode)
@@ -531,13 +534,18 @@ class NewsReporter:
         now = datetime.now()
         batch_id = format_time_filename()  # 如: "15时35分"
 
-        # 构建当前批次数据
+        # 构建当前批次数据(仅包含增量新闻)
         current_batch = self._build_batch_data(
             batch_id=batch_id,
             timestamp=now,
             report_data=report_data,
             total_titles=total_titles
         )
+
+        # 检查是否有增量新闻
+        if current_batch["total_news_count"] == 0:
+            # 没有增量新闻,跳过 JSON 生成
+            return None
 
         # 保存汇总 JSON (追加模式)
         summary_path = self._save_summary_json(current_batch, mode)
@@ -557,9 +565,9 @@ class NewsReporter:
         batch_id: str,
         timestamp: datetime,
         report_data: Dict,
-        total_titles: int
+        total_titles: int  # pylint: disable=unused-argument
     ) -> Dict[str, Any]:
-        """构建单个批次的数据结构
+        """构建单个批次的数据结构(仅包含增量新闻)
 
         Args:
             batch_id: 批次ID(如 "15时35分")
@@ -568,51 +576,71 @@ class NewsReporter:
             total_titles: 总新闻数
 
         Returns:
-            Dict: 批次数据结构
+            Dict: 批次数据结构(仅包含is_new=True的新闻)
         """
-        # 转换词组统计数据
+        # 转换词组统计数据(仅包含增量新闻)
         stats_list = []
+        total_new_count = 0
+
         for stat in report_data["stats"]:
+            # 仅保留标记为新增的新闻
+            new_news_list = [
+                title_data for title_data in stat["titles"]
+                if title_data.get("is_new", False)
+            ]
+
+            if not new_news_list:
+                continue  # 跳过没有新增新闻的词组
+
             news_list = []
-            for title_data in stat["titles"]:
+            for title_data in new_news_list:
                 news_item = {
                     "title": title_data["title"],
                     "url": title_data["url"],
                     "mobile_url": title_data["mobile_url"],
-                    "platform": title_data["source_name"],  # 平台显示名称
+                    "platform": title_data["platform"],  # 平台ID(如 zhihu, weibo)
+                    "platform_name": title_data["source_name"],  # 平台显示名称(如 知乎, 微博)
                     "rank": min(title_data["ranks"]) if title_data["ranks"] else 999,
                     "ranks": title_data["ranks"],  # 所有排名
                     "occurrence_count": title_data["count"],  # 出现次数
                     "time_display": title_data["time_display"],
-                    "is_new": title_data.get("is_new", False),
+                    "is_new": True,  # 确保标记为新增
                 }
                 news_list.append(news_item)
 
+            total_new_count += len(news_list)
+
             stats_list.append({
                 "word_group": stat["word"],
-                "count": stat["count"],
-                "percentage": round(stat["percentage"], 2),
+                "count": len(news_list),  # 当前词组的新增数量
+                "percentage": 0,  # 暂时设为0,后续重新计算
                 "news_list": news_list,
             })
+
+        # 重新计算每个词组的百分比(基于增量新闻总数)
+        if total_new_count > 0:
+            for stat in stats_list:
+                stat["percentage"] = round(stat["count"] / total_new_count * 100, 2)
 
         return {
             "batch_id": batch_id,
             "timestamp": timestamp.isoformat(),
-            "total_news_count": total_titles,
+            "total_news_count": total_new_count,  # 仅统计增量新闻数量
             "stats": stats_list,
         }
 
     def _save_summary_json(
         self,
         current_batch: Dict[str, Any],
-        mode: str
+        mode: str  # pylint: disable=unused-argument
     ) -> Path:
-        """保存汇总 JSON (追加模式)
+        """保存汇总 JSON (追加增量模式)
 
-        汇总文件包含当天所有批次的历史数据,每次执行时追加新批次。
+        汇总文件包含当天所有批次的增量新闻数据,每次执行时追加新批次的增量新闻。
+        注意:仅追加标记为 is_new=True 的新闻,历史持续出现的新闻不会被重复追加。
 
         Args:
-            current_batch: 当前批次数据
+            current_batch: 当前批次数据(仅包含增量新闻)
             mode: 运行模式
 
         Returns:
@@ -653,7 +681,7 @@ class NewsReporter:
         batch_id: str,
         timestamp: datetime,
         report_data: Dict,
-        mode: str
+        mode: str  # pylint: disable=unused-argument
     ) -> Path:
         """保存增量 JSON (覆写模式)
 
@@ -686,7 +714,8 @@ class NewsReporter:
                         "title": title_data["title"],
                         "url": title_data["url"],
                         "mobile_url": title_data["mobile_url"],
-                        "platform": title_data["source_name"],
+                        "platform": title_data["platform"],  # 平台ID
+                        "platform_name": title_data["source_name"],  # 平台显示名称
                         "rank": min(title_data["ranks"]) if title_data["ranks"] else 999,
                         "ranks": title_data["ranks"],
                         "occurrence_count": title_data["count"],

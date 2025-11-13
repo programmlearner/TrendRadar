@@ -49,6 +49,10 @@ class NewsRanking:
     def parse_file_titles(self, file_path: Path) -> Tuple[Dict, Dict]:
         """解析单个txt文件的标题数据
 
+        支持两种格式:
+        1. 按平台分组: "platform_id | name\\n1. title..."
+        2. 按词组分组: "词组名 (共N条)\\n[平台名] 标题..."
+
         Args:
             file_path: 文件路径
 
@@ -62,68 +66,93 @@ class NewsRanking:
 
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-            sections = content.split("\n\n")
 
-        for section in sections:
-            if not section.strip() or "==== 以下ID请求失败 ====" in section:
+        # 按行解析(支持按词组分组的格式)
+        for line in content.split('\n'):
+            line = line.strip()
+
+            if not line or line.startswith('====') or '(共' in line and line.endswith('条)'):
+                # 跳过空行、分隔行、词组标题行
                 continue
 
-            lines = section.strip().split("\n")
-            if len(lines) < 2:
-                continue
+            # 解析格式: [平台名称] 标题 [排名] - 时间 [URL:...] [MOBILE:...]
+            if line.startswith('[') and '] ' in line:
+                try:
+                    # 提取平台名称
+                    platform_end = line.index('] ')
+                    platform_name = line[1:platform_end]
+                    rest = line[platform_end + 2:]
 
-            # 解析header: "id | name" 或 "id"
-            header_line = lines[0].strip()
-            if " | " in header_line:
-                parts = header_line.split(" | ", 1)
-                source_id = parts[0].strip()
-                name = parts[1].strip()
-                id_to_name[source_id] = name
-            else:
-                source_id = header_line
-                id_to_name[source_id] = source_id
+                    # 从平台名称推断 platform_id
+                    platform_id = self._infer_platform_id(platform_name)
+                    id_to_name[platform_id] = platform_name
 
-            titles_by_id[source_id] = {}
+                    if platform_id not in titles_by_id:
+                        titles_by_id[platform_id] = {}
 
-            # 解析标题行
-            for line in lines[1:]:
-                if line.strip():
-                    try:
-                        title_part = line.strip()
-                        rank = None
+                    # 提取 MOBILE URL
+                    mobile_url = ""
+                    if " [MOBILE:" in rest:
+                        rest, mobile_part = rest.rsplit(" [MOBILE:", 1)
+                        if mobile_part.endswith("]"):
+                            mobile_url = mobile_part[:-1]
 
-                        # 提取排名 "1. title"
-                        if ". " in title_part and title_part.split(". ")[0].isdigit():
-                            rank_str, title_part = title_part.split(". ", 1)
-                            rank = int(rank_str)
+                    # 提取 URL
+                    url = ""
+                    if " [URL:" in rest:
+                        rest, url_part = rest.rsplit(" [URL:", 1)
+                        if url_part.endswith("]"):
+                            url = url_part[:-1]
 
-                        # 提取 MOBILE URL
-                        mobile_url = ""
-                        if " [MOBILE:" in title_part:
-                            title_part, mobile_part = title_part.rsplit(" [MOBILE:", 1)
-                            if mobile_part.endswith("]"):
-                                mobile_url = mobile_part[:-1]
+                    # 提取排名 (格式: "标题 [排名] - 时间")
+                    rank = None
+                    if " [" in rest and "] - " in rest:
+                        title_part, rank_time = rest.rsplit(" [", 1)
+                        if "] - " in rank_time:
+                            rank_str = rank_time.split("] - ")[0]
+                            if rank_str.isdigit():
+                                rank = int(rank_str)
+                    else:
+                        title_part = rest
 
-                        # 提取 URL
-                        url = ""
-                        if " [URL:" in title_part:
-                            title_part, url_part = title_part.rsplit(" [URL:", 1)
-                            if url_part.endswith("]"):
-                                url = url_part[:-1]
+                    title = clean_title(title_part.strip())
+                    ranks = [rank] if rank is not None else [999]
 
-                        title = clean_title(title_part.strip())
-                        ranks = [rank] if rank is not None else [1]
+                    titles_by_id[platform_id][title] = {
+                        "ranks": ranks,
+                        "url": url,
+                        "mobileUrl": mobile_url,
+                    }
 
-                        titles_by_id[source_id][title] = {
-                            "ranks": ranks,
-                            "url": url,
-                            "mobileUrl": mobile_url,
-                        }
-
-                    except Exception as e:
-                        print(f"解析标题行出错: {line}, 错误: {e}")
+                except Exception as e:
+                    print(f"解析标题行出错: {line[:50]}..., 错误: {e}")
+                    continue
 
         return titles_by_id, id_to_name
+
+    def _infer_platform_id(self, platform_name: str) -> str:
+        """从平台名称推断平台ID
+
+        Args:
+            platform_name: 平台显示名称
+
+        Returns:
+            str: 平台ID
+        """
+        # 平台名称映射
+        name_to_id = {
+            "知乎": "zhihu",
+            "微博": "weibo",
+            "抖音": "douyin",
+            "百度热搜": "baidu",
+            "今日头条": "toutiao",
+            "哔哩哔哩": "bilibili",
+            "金十数据": "jin10",
+            "凤凰网": "wallstreetcn-hot",
+            "YouTube 美国": "youtube",
+        }
+
+        return name_to_id.get(platform_name, platform_name.lower().replace(" ", "_"))
 
     def read_all_today_titles(
         self,
@@ -251,65 +280,53 @@ class NewsRanking:
 
     def detect_latest_new_titles(
         self,
+        current_results: Dict,
         current_platform_ids: Optional[List[str]] = None
     ) -> Dict:
         """检测当日最新批次的新增标题
 
+        通过对比当前爬取的新闻和当日汇总文件来判断增量
+
         Args:
+            current_results: 当前爬取的新闻数据 {platform_id: {title: data}}
             current_platform_ids: 当前监控的平台ID列表（用于过滤）
 
         Returns:
-            Dict: {platform_id: {title: {ranks, url, mobileUrl}}}
+            Dict: {platform_id: {title: {ranks, url, mobileUrl}}} 新增标题
         """
         date_folder = format_date_folder()
         txt_dir = Path("output") / date_folder / "txt"
 
         if not txt_dir.exists():
-            return {}
+            # 第一次运行,所有新闻都是新增
+            return current_results
 
-        files = sorted([f for f in txt_dir.iterdir() if f.suffix == ".txt"])
-        if len(files) < 2:
-            return {}
+        # 查找当日汇总文件
+        summary_file = txt_dir / "当日汇总.txt"
+        if not summary_file.exists():
+            # 第一次运行,没有历史数据,所有新闻都是新增
+            return current_results
 
-        # 解析最新文件
-        latest_file = files[-1]
-        latest_titles, _ = self.parse_file_titles(latest_file)
+        # 解析历史文件(当日汇总)
+        historical_titles, _ = self.parse_file_titles(summary_file)
 
-        # 如果指定了当前平台列表，过滤最新文件数据
+        # 如果指定了当前平台列表,过滤历史数据
         if current_platform_ids is not None:
-            filtered_latest_titles = {}
-            for source_id, title_data in latest_titles.items():
+            filtered_historical = {}
+            for source_id, title_data in historical_titles.items():
                 if source_id in current_platform_ids:
-                    filtered_latest_titles[source_id] = title_data
-            latest_titles = filtered_latest_titles
+                    filtered_historical[source_id] = title_data
+            historical_titles = filtered_historical
 
-        # 汇总历史标题（按平台过滤）
-        historical_titles = {}
-        for file_path in files[:-1]:
-            historical_data, _ = self.parse_file_titles(file_path)
-
-            # 过滤历史数据
-            if current_platform_ids is not None:
-                filtered_historical_data = {}
-                for source_id, title_data in historical_data.items():
-                    if source_id in current_platform_ids:
-                        filtered_historical_data[source_id] = title_data
-                historical_data = filtered_historical_data
-
-            for source_id, titles_data in historical_data.items():
-                if source_id not in historical_titles:
-                    historical_titles[source_id] = set()
-                for title in titles_data.keys():
-                    historical_titles[source_id].add(title)
-
-        # 找出新增标题
+        # 对比找出新增标题
         new_titles = {}
-        for source_id, latest_source_titles in latest_titles.items():
-            historical_set = historical_titles.get(source_id, set())
+        for source_id, current_source_titles in current_results.items():
+            historical_set = set(historical_titles.get(source_id, {}).keys())
             source_new_titles = {}
 
-            for title, title_data in latest_source_titles.items():
+            for title, title_data in current_source_titles.items():
                 if title not in historical_set:
+                    # 新增标题
                     source_new_titles[title] = title_data
 
             if source_new_titles:
@@ -320,6 +337,8 @@ class NewsRanking:
     def is_first_crawl_today(self) -> bool:
         """判断是否是当天第一次爬取
 
+        通过检查当日汇总文件是否存在来判断
+
         Returns:
             bool: 是否是第一次
         """
@@ -329,8 +348,9 @@ class NewsRanking:
         if not txt_dir.exists():
             return True
 
-        files = list(txt_dir.glob("*.txt"))
-        return len(files) <= 1
+        # 检查当日汇总文件是否存在
+        summary_file = txt_dir / "当日汇总.txt"
+        return not summary_file.exists()
 
     def calculate_statistics(
         self,
@@ -452,12 +472,14 @@ class NewsRanking:
                 results_to_process = self._filter_current_batch(results, title_info)
             else:
                 results_to_process = results
-            all_news_are_new = False
+            # 当天第一次运行时,所有新闻都视为新增
+            all_news_are_new = is_first_today
 
         else:
             # 当日汇总模式：处理所有新闻
             results_to_process = results
-            all_news_are_new = False
+            # 当天第一次运行时,所有新闻都视为新增
+            all_news_are_new = is_first_today
             total_input_news = sum(len(titles) for titles in results.values())
             filter_status = "全部显示" if len(self.news_filter.get_word_groups()) == 0 else "频率词过滤"
             print(f"当日汇总模式：处理 {total_input_news} 条新闻，模式：{filter_status}")
@@ -618,7 +640,8 @@ class NewsRanking:
             # 添加到统计
             word_stats[group_key]["titles"][source_id].append({
                 "title": title,
-                "source_name": source_name,
+                "platform": source_id,  # 平台ID (如 zhihu, weibo)
+                "source_name": source_name,  # 平台显示名称
                 "first_time": first_time,
                 "last_time": last_time,
                 "time_display": time_display,
@@ -723,8 +746,8 @@ class NewsRanking:
                 news = News(
                     title=item["title"],
                     url=item["url"],
-                    platform="",  # 从 source_name 中无法反推 platform_id
-                    platform_name=item["source_name"],
+                    platform=item["platform"],  # 平台ID (如 zhihu, weibo)
+                    platform_name=item["source_name"],  # 平台显示名称
                     rank=min(item["ranks"]) if item["ranks"] else 99,
                     hotness=0,  # 暂时设为0
                     extra={
