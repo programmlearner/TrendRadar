@@ -146,6 +146,12 @@ def auto_register_builtin_sources():
     except ImportError:
         print("警告: 无法导入 RSSSource")
 
+    try:
+        from src.sources.youtube import YouTubeSource
+        register_source(YouTubeSource)
+    except ImportError:
+        print("警告: 无法导入 YouTubeSource")
+
 
 # 初始化时自动注册
 auto_register_builtin_sources()
