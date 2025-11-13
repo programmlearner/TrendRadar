@@ -43,106 +43,100 @@ const query = new URLSearchParams(window.location.search);
 
     const SAMPLE_SUMMARY = {
         metadata: {
-            date: '2025-11-12',
-            total_batches: 5,
-            total_news_count: 150,
-            last_update: '2025-11-12T15:35:00+08:00',
+            date: '2025-11-13',
+            mode: 'daily',
+            timestamp: '2025-11-13T17:34:22.238606+08:00',
+            total_word_groups: 4,
+            total_news_count: 17,
         },
-        batches: [
+        stats: [
             {
-                batch_id: '15时35分',
-                timestamp: '2025-11-12T15:35:00+08:00',
-                stats: [
+                word_group: 'AI',
+                count: 8,
+                percentage: 8.89,
+                news_list: [
                     {
-                        word_group: '中国 美国 经济',
-                        count: 28,
-                        percentage: 18.6,
-                        news_list: [
-                            {
-                                title: '美就业疲软提振降息预期，人民币情绪修复',
-                                url: 'https://example.com/news/1',
-                                platform: 'wallstreetcn-hot',
-                                platform_name: '华尔街见闻',
-                                rank: 1,
-                                ranks: [1],
-                                occurrence_count: 1,
-                                time_display: '15时35分',
-                                is_new: false,
-                                mobile_url: 'https://m.example.com/news/1',
-                            },
-                            {
-                                title: '美股高位震荡，市场押注 12 月降息',
-                                url: 'https://example.com/news/2',
-                                platform: 'jin10-hot',
-                                platform_name: '金十数据',
-                                rank: 4,
-                                time_display: '15时28分',
-                                is_new: true,
-                            },
-                        ],
+                        title: 'The Super Mario Galaxy Movie – Official Trailer',
+                        url: 'https://www.youtube.com/watch?v=GuCejewteF8',
+                        mobile_url: 'https://m.youtube.com/watch?v=GuCejewteF8',
+                        platform: 'youtube',
+                        platform_name: 'YouTube 美国',
+                        rank: 2,
+                        ranks: [2],
+                        occurrence_count: 1,
+                        time_display: '17:34',
                     },
                     {
-                        word_group: '新能源 供应链',
-                        count: 16,
-                        percentage: 11.2,
-                        news_list: [
-                            {
-                                title: '国内动力电池开工率回升，三元再获海外大单',
-                                url: 'https://example.com/news/3',
-                                platform_name: '36氪热榜',
-                                rank: 2,
-                                time_display: '15时12分',
-                            },
-                            {
-                                title: '锂价止跌，四川资源型小厂重启',
-                                url: 'https://example.com/news/4',
-                                platform_name: '知乎热榜',
-                                rank: 8,
-                                time_display: '15时05分',
-                            },
-                        ],
+                        title: 'The Devil Wears Prada 2 | Teaser Trailer',
+                        url: 'https://www.youtube.com/watch?v=9c-DrMe8o5Q',
+                        mobile_url: 'https://m.youtube.com/watch?v=9c-DrMe8o5Q',
+                        platform: 'youtube',
+                        platform_name: 'YouTube 美国',
+                        rank: 5,
+                        ranks: [5],
+                        occurrence_count: 1,
+                        time_display: '17:34',
                     },
                 ],
             },
             {
-                batch_id: '14时50分',
-                timestamp: '2025-11-12T14:50:00+08:00',
-                stats: [
+                word_group: '科技',
+                count: 5,
+                percentage: 5.56,
+                news_list: [
                     {
-                        word_group: 'AI 芯片',
-                        count: 22,
-                        percentage: 14.2,
-                        news_list: [
-                            {
-                                title: '国产 GPU 交付国内云厂商，推理性能获验证',
-                                url: 'https://example.com/news/5',
-                                platform_name: '微博热搜',
-                                rank: 3,
-                                time_display: '14时46分',
-                                is_new: true,
-                            },
-                            {
-                                title: '台系封测厂 2025 产能满排，AI 订单排到 Q3',
-                                url: 'https://example.com/news/6',
-                                platform_name: '东吴证券读报',
-                                rank: 6,
-                                time_display: '14时40分',
-                            },
-                        ],
+                        title: '36氪冯大刚对话博彦科技创始人王斌：全球化、「田忌赛马」与AI破局',
+                        url: 'https://36kr.com/p/3551232564492161?f=rss',
+                        platform: 'rss',
+                        platform_name: '36氪',
+                        rank: 1,
+                        ranks: [1],
+                        occurrence_count: 1,
+                        time_display: '17:34',
                     },
                     {
-                        word_group: '出海 电商',
-                        count: 12,
-                        percentage: 8.5,
-                        news_list: [
-                            {
-                                title: '东南亚 11.11 GMV 创新高，中国品牌占 63%',
-                                url: 'https://example.com/news/7',
-                                platform_name: '抖音热榜',
-                                rank: 5,
-                                time_display: '14时33分',
-                            },
-                        ],
+                        title: '智能科技为体育带来这些改变',
+                        url: 'https://www.toutiao.com/trending/7571991442848055334/',
+                        platform: 'toutiao',
+                        platform_name: '今日头条',
+                        rank: 3,
+                        ranks: [3],
+                        occurrence_count: 1,
+                        time_display: '17:34',
+                    },
+                ],
+            },
+            {
+                word_group: '中国',
+                count: 3,
+                percentage: 3.33,
+                news_list: [
+                    {
+                        title: '狂奔之后，中国户外产业寻找「新节奏」',
+                        url: 'https://36kr.com/p/3551112683009927?f=rss',
+                        platform: 'rss',
+                        platform_name: '36氪',
+                        rank: 2,
+                        ranks: [2],
+                        occurrence_count: 1,
+                        time_display: '17:34',
+                    },
+                ],
+            },
+            {
+                word_group: '经济',
+                count: 1,
+                percentage: 1.11,
+                news_list: [
+                    {
+                        title: '海格通信：全资子公司拟增资扩股引入战略投资者',
+                        url: 'https://36kr.com/newsflashes/3551259309176966?f=rss',
+                        platform: 'rss',
+                        platform_name: '36氪',
+                        rank: 26,
+                        ranks: [26],
+                        occurrence_count: 1,
+                        time_display: '17:34',
                     },
                 ],
             },
@@ -303,17 +297,28 @@ const query = new URLSearchParams(window.location.search);
         });
     };
 
-    const countKeywordGroups = (batches = []) => {
+    const getSummaryStats = (input) => {
+        if (!input) return [];
+        if (Array.isArray(input.stats) && input.stats.length) {
+            return input.stats;
+        }
+        if (Array.isArray(input.batches) && input.batches.length) {
+            return input.batches.flatMap((batch) => (Array.isArray(batch.stats) ? batch.stats : []));
+        }
+        return [];
+    };
+
+    const countKeywordGroups = (data) => {
         const groupSet = new Set();
-        batches.forEach((batch) => {
-            (batch.stats || []).forEach((stat) => {
-                if (stat?.word_group) {
-                    groupSet.add(stat.word_group);
-                }
-            });
+        getSummaryStats(data).forEach((stat) => {
+            if (stat?.word_group) {
+                groupSet.add(stat.word_group);
+            }
         });
         return groupSet.size;
     };
+
+    const sumNewsCount = (stats = []) => stats.reduce((acc, stat) => acc + (Number(stat?.count) || 0), 0);
 
     const createStatCard = (stat) => {
         const wrapper = document.createElement('div');
@@ -396,34 +401,73 @@ const query = new URLSearchParams(window.location.search);
         return card;
     };
 
-    const renderSummary = (data, options = {}) => {
-        const { badgeText } = options;
-        heroEls.date.textContent = data.metadata?.date || '—';
-        if (heroEls.keywords) {
-            const keywordGroupCount = countKeywordGroups(data.batches || []);
-            heroEls.keywords.textContent = `${keywordGroupCount} 组`;
-        }
-        heroEls.news.textContent = `${formatNumber(data.metadata?.total_news_count ?? 0)} 条`;
-        heroEls.updated.textContent = formatDate(data.metadata?.last_update);
+    const createFlatSummaryCard = (stats, metadata, keywordGroupCount) => {
+        const card = document.createElement('article');
+        card.className = 'batch-card';
 
-        // if (batchBadgeEl) {
-        //     batchBadgeEl.textContent = badgeText ?? `${data.batches?.length ?? 0} 批记录`;
-        // }
+        const timestamp = metadata?.timestamp || metadata?.last_update;
+        const modeLabel = (() => {
+            if (metadata?.mode === 'daily') return '每日汇总';
+            if (metadata?.mode === 'incremental') return '增量汇总';
+            if (metadata?.mode) return metadata.mode;
+            return '今日汇总';
+        })();
+
+        card.innerHTML = `
+            <div class="batch-summary">
+                <div>
+                    <div class="batch-time">${modeLabel}</div>
+                    <div class="batch-meta">${timestamp ? `生成时间 · ${formatDate(timestamp)}` : '生成时间未知'}</div>
+                </div>
+                <div class="pill">${keywordGroupCount} 个关键词组</div>
+            </div>
+        `;
+
+        const statsGrid = document.createElement('div');
+        statsGrid.className = 'stats-grid';
+
+        stats.forEach((stat) => {
+            statsGrid.appendChild(createStatCard(stat));
+        });
+
+        card.appendChild(statsGrid);
+        return card;
+    };
+
+    const renderSummary = (data = {}) => {
+        const metadata = data.metadata ?? {};
+        const stats = getSummaryStats(data);
+        const keywordGroupCount = metadata.total_word_groups ?? countKeywordGroups(data);
+        const newsCount = metadata.total_news_count ?? sumNewsCount(stats);
+        const lastUpdated = metadata.timestamp || metadata.last_update;
+
+        heroEls.date.textContent = metadata.date || '—';
+        if (heroEls.keywords) {
+            heroEls.keywords.textContent = keywordGroupCount ? `${keywordGroupCount} 组` : '—';
+        }
+        heroEls.news.textContent = `${formatNumber(newsCount)} 条`;
+        heroEls.updated.textContent = lastUpdated ? formatDate(lastUpdated) : '—';
 
         batchTimelineEl.innerHTML = '';
-        if (!data.batches?.length) {
-            batchTimelineEl.innerHTML = '<div class="empty-state">暂无批次数据</div>';
+
+        if (Array.isArray(data.batches) && data.batches.length) {
+            data.batches.forEach((batch, index) => {
+                batchTimelineEl.appendChild(createBatchCard(batch, index));
+            });
             return;
         }
 
-        data.batches.forEach((batch, index) => {
-            batchTimelineEl.appendChild(createBatchCard(batch, index));
-        });
+        if (!stats.length) {
+            batchTimelineEl.innerHTML = '<div class="empty-state">暂无统计数据</div>';
+            return;
+        }
+
+        batchTimelineEl.appendChild(createFlatSummaryCard(stats, metadata, keywordGroupCount || stats.length));
     };
 
     const renderIncremental = () => {};
 
-    renderSummary(SAMPLE_SUMMARY, { badgeText: '样例视图' });
+    renderSummary(SAMPLE_SUMMARY);
     renderIncremental(SAMPLE_INCREMENTAL, { badgeText: '样例批次' });
 
     const fetchWithFallback = async ({ label, loader }) => {
@@ -453,7 +497,7 @@ const query = new URLSearchParams(window.location.search);
             if (summaryResult) {
                 renderSummary(summaryResult.json);
                 dataState.summarySource = 'api';
-            } else if (dataState.summarySource === 'sample') {
+            } else if (dataState.summarySource === 'sample' && batchBadgeEl) {
                 batchBadgeEl.textContent = '样例视图 · 等待 API 数据';
             }
         }

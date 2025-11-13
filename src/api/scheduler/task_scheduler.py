@@ -46,9 +46,9 @@ class CrawlerScheduler:
 
     async def start(self) -> None:
         """启动调度器"""
-        scheduler_config = self.config.get("SCHEDULER_CONFIG", {})
+        scheduler_config = self.config.get("scheduler", {})
 
-        if not scheduler_config.get("ENABLED", False):
+        if not scheduler_config.get("enabled", False):
             print("⚠️  定时任务调度器未启用")
             return
 
@@ -74,18 +74,18 @@ class CrawlerScheduler:
         Args:
             scheduler_config: 调度器配置
         """
-        trigger_type = scheduler_config.get("TRIGGER_TYPE", "interval")
-        mode = scheduler_config.get("MODE", "daily")
+        trigger_type = scheduler_config.get("trigger_type", "interval")
+        mode = scheduler_config.get("mode", "daily")
 
         if trigger_type == "interval":
             # 间隔触发模式
-            interval_seconds = scheduler_config.get("INTERVAL_SECONDS", 3600)
+            interval_seconds = scheduler_config.get("interval_seconds", 3600)
             trigger = IntervalTrigger(seconds=interval_seconds, timezone="Asia/Shanghai")
             print(f"✓ 配置间隔触发: 每 {interval_seconds} 秒执行一次 ({mode} 模式)")
 
         elif trigger_type == "cron":
             # Cron 表达式触发模式
-            cron_expr = scheduler_config.get("CRON_EXPRESSION", "0 * * * *")
+            cron_expr = scheduler_config.get("cron_expression", "0 * * * *")
             trigger = CronTrigger.from_crontab(cron_expr, timezone="Asia/Shanghai")
             print(f"✓ 配置 Cron 触发: {cron_expr} ({mode} 模式)")
 
@@ -205,21 +205,21 @@ class CrawlerScheduler:
         Returns:
             Dict: 状态信息
         """
-        scheduler_config = self.config.get("SCHEDULER_CONFIG", {})
+        scheduler_config = self.config.get("scheduler", {})
 
         status = {
-            "enabled": scheduler_config.get("ENABLED", False),
+            "enabled": scheduler_config.get("enabled", False),
             "running": self.is_running,
             "scheduler_state": "running" if self.scheduler.running else "stopped",
-            "trigger_type": scheduler_config.get("TRIGGER_TYPE", "interval"),
-            "mode": scheduler_config.get("MODE", "daily"),
+            "trigger_type": scheduler_config.get("trigger_type", "interval"),
+            "mode": scheduler_config.get("mode", "daily"),
         }
 
         # 添加触发器信息
-        if scheduler_config.get("TRIGGER_TYPE") == "interval":
-            status["interval_seconds"] = scheduler_config.get("INTERVAL_SECONDS", 3600)
+        if scheduler_config.get("trigger_type") == "interval":
+            status["interval_seconds"] = scheduler_config.get("interval_seconds", 3600)
         else:
-            status["cron_expression"] = scheduler_config.get("CRON_EXPRESSION", "0 * * * *")
+            status["cron_expression"] = scheduler_config.get("cron_expression", "0 * * * *")
 
         # 添加下次执行时间
         if self.current_job and self.scheduler.running:
@@ -284,7 +284,7 @@ class CrawlerScheduler:
             mode: 运行模式,如果为 None 则使用配置的默认模式
         """
         if mode is None:
-            mode = self.config.get("SCHEDULER_CONFIG", {}).get("MODE", "daily")
+            mode = self.config.get("scheduler", {}).get("mode", "daily")
 
         print(f"手动触发任务 - 模式: {mode}")
         await self._run_crawler_task(mode)

@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 from string import Template
 from typing import List, Dict, Optional, Any, Tuple
-from datetime import datetime
 
 from src.models.news import News, WordGroupStatistic
 from src.utils.file import clean_title, html_escape
@@ -537,9 +536,9 @@ class NewsReporter:
         failed_ids: Optional[List[str]] = None,
         new_news_list: Optional[List[News]] = None,
         mode: str = "daily",
-        is_daily_summary: bool = False
-    ) -> Optional[Tuple[Path, Path]]:
-        """生成 JSON 报告(汇总+增量)
+        is_daily_summary: bool = False  # pylint: disable=unused-argument
+    ) -> Path:
+        """生成 JSON 报告(全量覆写模式)
 
         Args:
             stats: 词组统计列表
@@ -550,242 +549,84 @@ class NewsReporter:
             is_daily_summary: 是否为当日汇总
 
         Returns:
-            Tuple[Path, Path] | None: (汇总文件路径, 增量文件路径), 无增量时返回None
+            Path: JSON 文件路径
         """
         # 准备报告数据
         report_data = self.prepare_report_data(stats, failed_ids, new_news_list, mode)
 
-        # 当前批次时间戳
-        now = datetime.now()
-        batch_id = format_time_filename()  # 如: "15时35分"
-
-        # 构建当前批次数据(仅包含增量新闻)
-        current_batch = self._build_batch_data(
-            batch_id=batch_id,
-            timestamp=now,
+        # 构建完整 JSON 数据
+        json_data = self._build_full_json_data(
             report_data=report_data,
-            total_titles=total_titles
-        )
-
-        # 检查是否有增量新闻
-        if current_batch["total_news_count"] == 0:
-            # 没有增量新闻,跳过 JSON 生成
-            return None
-
-        # 保存汇总 JSON (追加模式)
-        summary_path = self._save_summary_json(current_batch, mode)
-
-        # 保存增量 JSON (覆写模式)
-        incremental_path = self._save_incremental_json(
-            batch_id=batch_id,
-            timestamp=now,
-            report_data=report_data,
+            total_titles=total_titles,
             mode=mode
         )
 
-        return summary_path, incremental_path
+        # 获取文件路径
+        json_path = self.get_output_path("json", "news_summary.json")
 
-    def _build_batch_data(
+        # 原子写入
+        self._atomic_write_json(json_path, json_data)
+
+        return json_path
+
+    def _build_full_json_data(
         self,
-        batch_id: str,
-        timestamp: datetime,
         report_data: Dict,
-        total_titles: int  # pylint: disable=unused-argument
+        total_titles: int,  # pylint: disable=unused-argument
+        mode: str
     ) -> Dict[str, Any]:
-        """构建单个批次的数据结构(仅包含增量新闻)
+        """构建完整 JSON 数据(包含所有匹配新闻)
 
         Args:
-            batch_id: 批次ID(如 "15时35分")
-            timestamp: 时间戳
             report_data: prepare_report_data() 返回的数据
             total_titles: 总新闻数
+            mode: 运行模式
 
         Returns:
-            Dict: 批次数据结构(仅包含is_new=True的新闻)
+            Dict: 完整 JSON 数据结构
         """
-        # 转换词组统计数据(仅包含增量新闻)
+        from src.utils.time import get_beijing_time
+
+        now = get_beijing_time()
+
+        # 转换词组统计数据(包含所有新闻,不过滤 is_new)
         stats_list = []
-        total_new_count = 0
+        total_count = 0
 
         for stat in report_data["stats"]:
-            # 仅保留标记为新增的新闻
-            new_news_list = [
-                title_data for title_data in stat["titles"]
-                if title_data.get("is_new", False)
-            ]
-
-            if not new_news_list:
-                continue  # 跳过没有新增新闻的词组
-
             news_list = []
-            for title_data in new_news_list:
+            for title_data in stat["titles"]:
                 news_item = {
                     "title": title_data["title"],
                     "url": title_data["url"],
                     "mobile_url": title_data["mobile_url"],
-                    "platform": title_data["platform"],  # 平台ID(如 zhihu, weibo)
-                    "platform_name": title_data["source_name"],  # 平台显示名称(如 知乎, 微博)
+                    "platform": title_data["platform"],
+                    "platform_name": title_data["source_name"],
                     "rank": min(title_data["ranks"]) if title_data["ranks"] else 999,
-                    "ranks": title_data["ranks"],  # 所有排名
-                    "occurrence_count": title_data["count"],  # 出现次数
+                    "ranks": title_data["ranks"],
+                    "occurrence_count": title_data["count"],
                     "time_display": title_data["time_display"],
-                    "is_new": True,  # 确保标记为新增
                 }
                 news_list.append(news_item)
 
-            total_new_count += len(news_list)
-
-            stats_list.append({
-                "word_group": stat["word"],
-                "count": len(news_list),  # 当前词组的新增数量
-                "percentage": 0,  # 暂时设为0,后续重新计算
-                "news_list": news_list,
-            })
-
-        # 重新计算每个词组的百分比(基于增量新闻总数)
-        if total_new_count > 0:
-            for stat in stats_list:
-                stat["percentage"] = round(stat["count"] / total_new_count * 100, 2)
-
-        return {
-            "batch_id": batch_id,
-            "timestamp": timestamp.isoformat(),
-            "total_news_count": total_new_count,  # 仅统计增量新闻数量
-            "stats": stats_list,
-        }
-
-    def _save_summary_json(
-        self,
-        current_batch: Dict[str, Any],
-        mode: str  # pylint: disable=unused-argument
-    ) -> Path:
-        """保存汇总 JSON (追加增量模式)
-
-        汇总文件包含当天所有批次的增量新闻数据,每次执行时追加新批次的增量新闻。
-        注意:仅追加标记为 is_new=True 的新闻,历史持续出现的新闻不会被重复追加。
-
-        Args:
-            current_batch: 当前批次数据(仅包含增量新闻)
-            mode: 运行模式
-
-        Returns:
-            Path: 汇总文件路径
-        """
-        # 获取汇总文件路径
-        summary_path = self.get_output_path("json", "news_summary.json")
-
-        # 读取现有汇总数据
-        if summary_path.exists():
-            try:
-                with open(summary_path, "r", encoding="utf-8") as f:
-                    summary_data = json.load(f)
-            except (json.JSONDecodeError, IOError):
-                # 文件损坏或读取失败,重新初始化
-                summary_data = self._init_summary_structure()
-        else:
-            # 首次创建
-            summary_data = self._init_summary_structure()
-
-        # 追加当前批次
-        summary_data["batches"].append(current_batch)
-
-        # 更新元数据
-        summary_data["metadata"]["total_batches"] = len(summary_data["batches"])
-        summary_data["metadata"]["last_update"] = current_batch["timestamp"]
-        summary_data["metadata"]["total_news_count"] = sum(
-            batch["total_news_count"] for batch in summary_data["batches"]
-        )
-
-        # 原子写入(先写临时文件,再重命名)
-        self._atomic_write_json(summary_path, summary_data)
-
-        return summary_path
-
-    def _save_incremental_json(
-        self,
-        batch_id: str,
-        timestamp: datetime,
-        report_data: Dict,
-        mode: str  # pylint: disable=unused-argument
-    ) -> Path:
-        """保存增量 JSON (覆写模式)
-
-        增量文件仅包含当前批次的新增数据,每次执行时完全覆写。
-
-        Args:
-            batch_id: 批次ID
-            timestamp: 时间戳
-            report_data: prepare_report_data() 返回的数据
-            mode: 运行模式
-
-        Returns:
-            Path: 增量文件路径
-        """
-        incremental_path = self.get_output_path("json", "news_incremental.json")
-
-        # 构建增量数据(仅包含标记为新增的新闻)
-        incremental_stats = []
-        for stat in report_data["stats"]:
-            # 只保留新增新闻
-            new_news_list = [
-                title_data for title_data in stat["titles"]
-                if title_data.get("is_new", False)
-            ]
-
-            if new_news_list:
-                news_items = []
-                for title_data in new_news_list:
-                    news_items.append({
-                        "title": title_data["title"],
-                        "url": title_data["url"],
-                        "mobile_url": title_data["mobile_url"],
-                        "platform": title_data["platform"],  # 平台ID
-                        "platform_name": title_data["source_name"],  # 平台显示名称
-                        "rank": min(title_data["ranks"]) if title_data["ranks"] else 999,
-                        "ranks": title_data["ranks"],
-                        "occurrence_count": title_data["count"],
-                        "time_display": title_data["time_display"],
-                    })
-
-                incremental_stats.append({
+            if news_list:
+                total_count += len(news_list)
+                stats_list.append({
                     "word_group": stat["word"],
-                    "count": len(news_items),
-                    "percentage": round(
-                        len(news_items) / report_data.get("total_new_count", 1) * 100, 2
-                    ) if report_data.get("total_new_count") else 0,
-                    "news_list": news_items,
+                    "count": len(news_list),
+                    "percentage": stat["percentage"],
+                    "news_list": news_list,
                 })
 
-        # 构建完整增量数据结构
-        incremental_data = {
-            "metadata": {
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "batch_id": batch_id,
-                "timestamp": timestamp.isoformat(),
-                "new_news_count": report_data.get("total_new_count", 0),
-            },
-            "stats": incremental_stats,
-        }
-
-        # 原子写入
-        self._atomic_write_json(incremental_path, incremental_data)
-
-        return incremental_path
-
-    def _init_summary_structure(self) -> Dict[str, Any]:
-        """初始化汇总数据结构
-
-        Returns:
-            Dict: 初始化的汇总数据
-        """
         return {
             "metadata": {
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "total_batches": 0,
-                "total_news_count": 0,
-                "last_update": None,
+                "date": now.strftime("%Y-%m-%d"),
+                "mode": mode,
+                "timestamp": now.isoformat(),
+                "total_word_groups": len(stats_list),
+                "total_news_count": total_count,
             },
-            "batches": [],
+            "stats": stats_list,
         }
 
     def _atomic_write_json(self, file_path: Path, data: Dict[str, Any]) -> None:

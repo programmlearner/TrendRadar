@@ -352,3 +352,97 @@ class TestNewsReporter:
             result = reporter.format_title_for_platform(platform, title_data)
             assert result  # 不应该为空
             assert "测试新闻" in result or "&#x6D4B;" in result  # 可能被转义
+
+    def test_generate_json_report(self, reporter, sample_stats, tmp_path, monkeypatch):
+        """测试生成 JSON 报告"""
+        monkeypatch.chdir(tmp_path)
+
+        json_path = reporter.generate_json_report(
+            stats=sample_stats,
+            total_titles=2,
+            failed_ids=["failed1"],
+            new_news_list=None,
+            mode="daily",
+            is_daily_summary=True
+        )
+
+        # 检查文件是否生成
+        assert json_path.exists()
+        assert json_path.name == "news_summary.json"
+
+        # 检查文件内容
+        import json
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # 检查元数据
+        assert "metadata" in data
+        assert data["metadata"]["mode"] == "daily"
+        assert data["metadata"]["total_word_groups"] == 1
+        assert data["metadata"]["total_news_count"] == 2
+
+        # 检查stats
+        assert "stats" in data
+        assert len(data["stats"]) == 1
+        assert data["stats"][0]["word_group"] == "测试 新闻"
+        assert data["stats"][0]["count"] == 2
+        assert len(data["stats"][0]["news_list"]) == 2
+
+        # 检查新闻项
+        news_item = data["stats"][0]["news_list"][0]
+        assert "title" in news_item
+        assert "url" in news_item
+        assert "platform" in news_item
+        assert "platform_name" in news_item
+        assert "rank" in news_item
+        assert "ranks" in news_item
+        assert "occurrence_count" in news_item
+        # 不应该包含 is_new 字段
+        assert "is_new" not in news_item
+
+    def test_generate_json_report_overwrite(self, reporter, sample_stats, tmp_path, monkeypatch):
+        """测试 JSON 报告覆写模式"""
+        monkeypatch.chdir(tmp_path)
+
+        # 第一次生成
+        json_path1 = reporter.generate_json_report(
+            stats=sample_stats,
+            total_titles=2,
+            mode="daily",
+            is_daily_summary=True
+        )
+
+        # 读取第一次的内容
+        import json
+        with open(json_path1, "r", encoding="utf-8") as f:
+            data1 = json.load(f)
+        assert data1["metadata"]["total_news_count"] == 2
+
+        # 第二次生成（应该覆写）
+        new_stats = [
+            WordGroupStatistic(
+                word="新词组",
+                count=1,
+                news_list=[sample_stats[0].news_list[0]],
+                percentage=100.0
+            )
+        ]
+
+        json_path2 = reporter.generate_json_report(
+            stats=new_stats,
+            total_titles=1,
+            mode="daily",
+            is_daily_summary=True
+        )
+
+        # 应该是同一个文件
+        assert json_path2 == json_path1
+
+        # 读取第二次的内容
+        with open(json_path2, "r", encoding="utf-8") as f:
+            data2 = json.load(f)
+
+        # 应该被完全覆写
+        assert data2["metadata"]["total_news_count"] == 1
+        assert len(data2["stats"]) == 1
+        assert data2["stats"][0]["word_group"] == "新词组"

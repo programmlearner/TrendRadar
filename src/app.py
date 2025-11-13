@@ -153,8 +153,8 @@ class TrendRadarApp:
             )
             print(f"✓ 汇总报告: {summary_txt_path}")
 
-            # 生成 JSON 报告(汇总+增量)
-            json_result = self.news_reporter.generate_json_report(
+            # 生成 JSON 报告(全量覆写)
+            json_path = self.news_reporter.generate_json_report(
                 stats=stats,
                 total_titles=total_titles,
                 failed_ids=failed_ids,
@@ -162,12 +162,7 @@ class TrendRadarApp:
                 mode=mode,
                 is_daily_summary=is_daily_summary
             )
-            if json_result:
-                summary_path, incremental_path = json_result
-                print(f"✓ JSON 汇总: {summary_path}")
-                print(f"✓ JSON 增量: {incremental_path}")
-            else:
-                print("ℹ️  本批次无增量新闻，跳过 JSON 生成")
+            print(f"✓ JSON 报告: {json_path}")
 
             # 生成邮件专用的 HTML 报告（服务器端渲染）
             html_path = self.news_reporter.generate_html_report(

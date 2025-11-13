@@ -118,7 +118,16 @@ class ConfigManager:
                 "MAX_HISTORY_LENGTH": config_data.get("chat", {}).get("max_history_length", 20),
                 "CONTEXT_NEWS_LIMIT": config_data.get("chat", {}).get("context_news_limit", 50),
                 "ENABLE_STREAMING": config_data.get("chat", {}).get("enable_streaming", False),
-            }
+            },
+
+            # 调度器配置（新增）
+            "scheduler": config_data.get("scheduler", {
+                "enabled": False,
+                "trigger_type": "interval",
+                "mode": "daily",
+                "interval_seconds": 3600,
+                "cron_expression": "0 * * * *"
+            })
         }
 
         # 通知渠道配置（环境变量优先）
