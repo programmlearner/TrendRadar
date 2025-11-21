@@ -135,14 +135,13 @@ scheduler:
   #   - POST /api/v1/scheduler/resume   - 恢复任务
   #   - POST /api/v1/scheduler/trigger  - 立即手动触发
 
-# name 可以定义任意名称，只具有显示作用，即使项目运行了几天后，忽然改掉 name 也不会影响代码的正常运行
 platforms:
-  #- id: "toutiao"
-  #  name: "今日头条"
+  # - id: "toutiao"
+  #   name: "今日头条"
   # - id: "baidu"
   #   name: "百度热搜"
-   - id: "wallstreetcn-hot"
-     name: "华尔街见闻"
+  - id: "wallstreetcn-hot"
+    name: "华尔街见闻"
   # - id: "thepaper"
   #   name: "澎湃新闻"
   - id: "bilibili-hot-search"
@@ -157,9 +156,9 @@ platforms:
   #   name: "微博"
   # - id: "douyin"
   #   name: "抖音"
-  # - id: "zhihu"
-     name: "知乎"
-   - id: "jin10"
+  - id: "zhihu"
+    name: "知乎"
+  # - id: "jin10"
   #   name: "金十数据"
 
 # 信息源配置
