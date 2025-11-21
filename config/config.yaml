@@ -46,8 +46,8 @@ notification:
     # 注意：GitHub Actions 执行时间不稳定，时间范围建议至少留足 2 小时
     # 如果想要精准的定时推送，建议使用 Docker 部署在个人服务器上
     time_range:
-      start: "20:00"  # 推送时间窗口开始（北京时间）
-      end: "22:00"    # 推送时间窗口结束（北京时间）
+      start: "7:30"  # 推送时间窗口开始（北京时间）
+      end: "8:00"    # 推送时间窗口结束（北京时间）
     once_per_day: true  # 每天在时间窗口内只推送一次，如果 false，则窗口内每次执行都推送
     push_record_retention_days: 7  # 推送记录保留天数
 
@@ -137,16 +137,16 @@ scheduler:
 
 # name 可以定义任意名称，只具有显示作用，即使项目运行了几天后，忽然改掉 name 也不会影响代码的正常运行
 platforms:
-  - id: "toutiao"
-    name: "今日头条"
+  #- id: "toutiao"
+  #  name: "今日头条"
   # - id: "baidu"
   #   name: "百度热搜"
-  # - id: "wallstreetcn-hot"
-  #   name: "华尔街见闻"
+   - id: "wallstreetcn-hot"
+     name: "华尔街见闻"
   # - id: "thepaper"
   #   name: "澎湃新闻"
-  # - id: "bilibili-hot-search"
-  #   name: "bilibili 热搜"
+  - id: "bilibili-hot-search"
+    name: "bilibili 热搜"
   # - id: "cls-hot"
   #   name: "财联社热门"
   # - id: "ifeng"
@@ -158,8 +158,8 @@ platforms:
   # - id: "douyin"
   #   name: "抖音"
   # - id: "zhihu"
-  #   name: "知乎"
-  # - id: "jin10"
+     name: "知乎"
+   - id: "jin10"
   #   name: "金十数据"
 
 # 信息源配置
@@ -214,14 +214,14 @@ sources:
   youtube:
     api_key: "AIzaSyD1T0A9MLj_sz9I1iSMgW3ESdvLzOYZl_E"  # 建议通过环境变量 YOUTUBE_API_KEY 配置
     regions:
-      - code: "US"
-        name: "美国"
+      #- code: "US"
+      #  name: "美国"
       # - code: "JP"
       #   name: "日本"
       # - code: "KR"
       #   name: "韩国"
       # - code: "TW"
       #   name: "台湾"
-      # - code: "HK"
-      #   name: "香港"
+       - code: "HK"
+         name: "香港"
     max_results: 20
